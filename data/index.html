@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<meta charset="utf-8" />
+<title>WebSocket Test</title>
+ 
+<script language="javascript" type="text/javascript">
+ 
+var url = "ws://" + location.host + ":1337/";
+var stepForwardButton;
+var stepBackwardButton;
+var stepSpeedInput;
+var stepAmountInput;
+ 
+// This is called when the page finishes loading
+function init()
+{
+    // Assign page elements to variables
+    stepForwardButton = document.getElementById("stepForward");
+	stepBackwardButton = document.getElementById("stepBackward");
+	stepSpeedInput = document.getElementById("stepSpeed");
+	stepAmountInput = document.getElementById("stepAmount");
+    
+    // Connect to WebSocket server
+    wsConnect(url);
+}
+ 
+// Call this to connect to the WebSocket server
+function wsConnect(url)
+{
+    // Connect to WebSocket server
+    websocket = new WebSocket(url);
+    
+    // Assign callbacks
+    websocket.onopen = function(evt) { onOpen(evt) };
+    websocket.onclose = function(evt) { onClose(evt) };
+    websocket.onmessage = function(evt) { onMessage(evt) };
+    websocket.onerror = function(evt) { onError(evt) };
+}
+ 
+// Called when a WebSocket connection is established with the server
+function onOpen(evt)
+{
+    // Log connection state
+    console.log("Connected");
+    
+    // Enable button
+    stepForwardButton.disabled = false;
+	stepBackwardButton.disabled = false;
+}
+ 
+// Called when the WebSocket connection is closed
+function onClose(evt) {
+ 
+    // Log disconnection state
+    console.log("Disconnected");
+    
+    // Disable button
+    stepForwardButton.disabled = true;
+	stepBackwardButton.disabled = true;
+    
+    // Try to reconnect after a few seconds
+    setTimeout(function() { wsConnect(url) }, 2000);
+}
+ 
+// Called when a message is received from the server
+function onMessage(evt)
+{
+    // Print out our received message
+    console.log("Received: " + evt.data);
+    
+    // Update circle graphic with LED state
+    switch(evt.data) {
+        case "done":
+            console.log("Done!");
+            break;
+    }
+}
+ 
+// Called when a WebSocket error occurs
+function onError(evt)
+{
+    console.log("ERROR: " + evt.data);
+}
+ 
+// Sends a message to the server (and prints it to the console)
+function doSend(message)
+{
+    console.log("Sending: " + message);
+    websocket.send(message);
+}
+ 
+// Called whenever the HTML button is pressed
+function onPress(dir)
+{
+	var message = 
+	{
+		"type": 1,
+		"dir": dir,
+		"speed": parseInt(stepSpeedInput.value,10),
+		"amount": parseInt(stepAmountInput.value,10)
+	}
+	message = JSON.stringify(message);
+	doSend(message);
+}
+ 
+// Call the init function as soon as the page loads
+window.addEventListener("load", init, false);
+ 
+</script>
+ 
+<h2>Stepper Control</h2>
+ 
+<table>
+    <tr>
+        <td><button id="stepForward" onclick="onPress('f')" disabled>Step Forward</button></td>
+        <td><button id="stepBackward" onclick="onPress('b')" disabled>Step Backward</button></td>
+		<td><input id="stepSpeed" type="number" value="20"></td>
+		<td><input id="stepAmount" type="number" value="200"></td>
+    </tr>
+</table>
