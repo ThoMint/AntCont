@@ -1,24 +1,137 @@
 <!DOCTYPE html>
 <meta charset="utf-8" />
-<title>WebSocket Test</title>
+<title>Antenna Controller</title>
  
 <script language="javascript" type="text/javascript">
  
 var url = "ws://" + location.host + ":1337/";
-var stepForwardButton;
-var stepBackwardButton;
-var stepSpeedInput;
-var stepAmountInput;
+var radioList;
+var btn1m;
+var btn10m;
+var btn100m;
+var btn1p;
+var btn10p;
+var btnp100p;
+var manualPosInput;
+var currentStepperPos;
+var profileList;
+
+function editEntry(num)
+{
+	var frequ = prompt("Enter frequncy:",profileList.frequs[num].frequ);
+	if(frequ == "delete")
+	{
+		profileList.frequs.splice(num,1);
+		buildPage(profileList);
+		sendListUpdate(profileList);
+	}
+	else
+	{
+		var pos = prompt("Enter Position:",currentStepperPos);
+		
+		profileList.frequs[num].frequ = frequ;
+		profileList.frequs[num].steps = pos;
+		buildPage(profileList);
+		sendListUpdate(profileList);
+	}
+}
+
+function newEntry()
+{
+	var frequ = prompt("Enter frequncy:");
+	var pos = prompt("Enter Position:",currentStepperPos);
+	
+	profileList.frequs.push({"frequ":frequ,"steps":pos});
+	buildPage(profileList);
+	sendListUpdate(profileList);
+}
+
+function sendListUpdate(list)
+{
+	list.type="saveList";
+	list = JSON.stringify(list);
+	console.log(list);
+	doSend(list);
+}
+
+function sendPosUpdate(pos)
+{
+	var message = 
+	{
+		"type": "stepperCMD",
+		"func": "d",
+		"speed": 50,
+		"amount": parseInt(pos,10)
+	}
+	message = JSON.stringify(message);
+	doSend(message);
+}
+
+function manualBtn(amount)
+{
+	currentStepperPos=currentStepperPos+amount;
+	manualPosInput.value=currentStepperPos;
+	sendPosUpdate(currentStepperPos);
+}
+
+function onSelect(pos)
+{
+	currentStepperPos=pos;
+	manualPosInput.value=currentStepperPos;
+	disableManualCntrl(true);
+	sendPosUpdate(currentStepperPos);
+}
+
+function disableManualCntrl(dsen)
+{
+	btn1m.disabled = dsen;
+	btn10m.disabled = dsen;
+	btn100m.disabled = dsen;
+	btn1p.disabled = dsen;
+	btn10p.disabled = dsen;
+	btnp100p.disabled = dsen;
+	manualPosInput.disabled = dsen;
+}
+
+function buildPage(message)
+{
+	profileList=message;
+	var i;
+	var html = "<input type='radio' checked='checked' onclick='disableManualCntrl(false)' name='Profile' value='manual'> Manual Control<br>";
+	for(i=0;i<message.frequs.length;i++)
+	{
+		html += "<input type='radio' onclick='onSelect(" + message.frequs[i].steps + ")' name='Profile' value='" + message.frequs[i].frequ + "'><a href='javascript:editEntry(" + i + ");' style='color: #000000;'>Frequency:";
+		html += message.frequs[i].frequ;
+		html += " Position:";
+		html += message.frequs[i].steps;
+		html += "<br>";
+	}
+	//<input type="radio" name="gender" value="male"> Male<br>
+	radioList.innerHTML = html;
+	disableManualCntrl(false);
+}
  
 // This is called when the page finishes loading
 function init()
 {
-    // Assign page elements to variables
-    stepForwardButton = document.getElementById("stepForward");
-	stepBackwardButton = document.getElementById("stepBackward");
-	stepSpeedInput = document.getElementById("stepSpeed");
-	stepAmountInput = document.getElementById("stepAmount");
-    
+	radioList = document.getElementById("radioList");
+	btn1m = document.getElementById("btn-1");
+	btn10m = document.getElementById("btn-10");
+	btn100m = document.getElementById("btn-100");
+	btn1p = document.getElementById("btn+1");
+	btn10p = document.getElementById("btn+10");
+	btnp100p = document.getElementById("btn+100");
+	manualPosInput = document.getElementById("manualPos");
+	manualPosInput.addEventListener("keyup", function(event)
+	{
+		if (event.keyCode === 13)
+		{
+			currentStepperPos=parseInt(manualPosInput.value,10);
+			sendPosUpdate(currentStepperPos);
+		}
+	});
+	currentStepperPos = 0;
+	disableManualCntrl(true);
     // Connect to WebSocket server
     wsConnect(url);
 }
@@ -41,10 +154,14 @@ function onOpen(evt)
 {
     // Log connection state
     console.log("Connected");
-    
-    // Enable button
-    stepForwardButton.disabled = false;
-	stepBackwardButton.disabled = false;
+	disableManualCntrl(false);
+	//Request List
+	var message = 
+	{
+		"type": "requestList"
+	}
+	message = JSON.stringify(message);
+	doSend(message);
 }
  
 // Called when the WebSocket connection is closed
@@ -52,10 +169,6 @@ function onClose(evt) {
  
     // Log disconnection state
     console.log("Disconnected");
-    
-    // Disable button
-    stepForwardButton.disabled = true;
-	stepBackwardButton.disabled = true;
     
     // Try to reconnect after a few seconds
     setTimeout(function() { wsConnect(url) }, 2000);
@@ -66,13 +179,11 @@ function onMessage(evt)
 {
     // Print out our received message
     console.log("Received: " + evt.data);
-    
-    // Update circle graphic with LED state
-    switch(evt.data) {
-        case "done":
-            console.log("Done!");
-            break;
-    }
+	var message = JSON.parse(evt.data);
+	if(message.type=="responseList")
+	{
+		buildPage(message);
+	}
 }
  
 // Called when a WebSocket error occurs
@@ -87,33 +198,15 @@ function doSend(message)
     console.log("Sending: " + message);
     websocket.send(message);
 }
- 
-// Called whenever the HTML button is pressed
-function onPress(dir)
-{
-	var message = 
-	{
-		"type": 1,
-		"dir": dir,
-		"speed": parseInt(stepSpeedInput.value,10),
-		"amount": parseInt(stepAmountInput.value,10)
-	}
-	message = JSON.stringify(message);
-	doSend(message);
-}
- 
-// Call the init function as soon as the page loads
+
 window.addEventListener("load", init, false);
- 
+
 </script>
- 
+<center>
 <h2>Stepper Control</h2>
- 
-<table>
-    <tr>
-        <td><button id="stepForward" onclick="onPress('f')" disabled>Step Forward</button></td>
-        <td><button id="stepBackward" onclick="onPress('b')" disabled>Step Backward</button></td>
-		<td><input id="stepSpeed" type="number" value="20"></td>
-		<td><input id="stepAmount" type="number" value="200"></td>
-    </tr>
-</table>
+<p id="cntrlPanel">
+<button type="button" onclick="manualBtn(-100)" id="btn-100">-100</button><button type="button" onclick="manualBtn(-10)" id="btn-10">-10</button><button type="button" onclick="manualBtn(-1)" id="btn-1">-1</button><input type="text"  style="text-align:center;width: 75px;" value="0" name="pos" id="manualPos"><button type="button" onclick="manualBtn(+1)" id="btn+1">+1</button><button type="button" onclick="manualBtn(+10)" id="btn+10">+10</button><button type="button" onclick="manualBtn(+100)" id="btn+100">+100</button>
+</p>
+<p id="radioList">Here goes the RadioList...</p>
+<p> <button type="button" onclick="newEntry()" id="newEntryBtn">+<br>
+</center>

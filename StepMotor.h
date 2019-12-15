@@ -12,6 +12,6 @@
 
 void initStepper();
 void disarmStepper();
-void cmdStepper(String function, int speed, int steps);
+void cmdStepper(String function, int speed, int pos);
 
 #endif

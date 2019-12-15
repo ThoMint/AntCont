@@ -1,7 +1,6 @@
 #include "WebSocketServer.h"
 
 const int ws_port = 1337;
-char msg_buf[10];
 WebSocketsServer webSocket = WebSocketsServer(ws_port);
 StaticJsonDocument<256> doc;
 
@@ -33,11 +32,19 @@ void onWebSocketEvent(uint8_t client_num, WStype_t type, uint8_t* payload, size_
       
       if(doc["type"].as<String>() == "stepperCMD")
       {
-        cmdStepper(doc["dir"].as<String>(),doc["speed"].as<int>(),doc["amount"].as<int>());
+        cmdStepper(doc["func"].as<String>(),doc["speed"].as<int>(),doc["amount"].as<int>());
       }
-      if(doc["type"].as<String>() == "")
+      if(doc["type"].as<String>() == "requestList")
       {
-        
+        String msg = getText(SPIFFS, "/frequs.txt");
+        webSocket.sendTXT(0, msg);
+      }
+      if(doc["type"].as<String>() == "saveList")
+      {
+        doc["type"] = "responseList";
+        String frequs;
+        serializeJson(doc, frequs);
+        writeFile(SPIFFS, "/frequs.txt", frequs);
       }
   }
 }

@@ -2,6 +2,7 @@
 #define WEBSOCKETSERVER_H
 
 #include "Arduino.h"
+#include "SFFIPS.h"
 #include "StepMotor.h"
 #include <WebSocketsServer.h>
 #include <ArduinoJson.h>

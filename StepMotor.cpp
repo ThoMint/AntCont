@@ -1,6 +1,7 @@
 #include "StepMotor.h"
 
 Stepper stepper(STEPS_PER_REV,IN1,IN2,IN3,IN4);
+int currPos = 0;
 
 void initStepper()
 {
@@ -17,19 +18,15 @@ void disarmStepper()
   digitalWrite(IN4,LOW);
 }
 
-void cmdStepper(String function, int speed, int steps)
+void cmdStepper(String function, int speed, int pos)
 {
-  if(function=="f")
-  {
-    stepper.setSpeed(speed);
-    stepper.step(steps);
-  }
-  if(function=="b")
-  {
-    stepper.setSpeed(speed);
-    stepper.step(-steps);
-  }
   if(function=="d")
+  {
+    stepper.setSpeed(speed);
+    stepper.step(pos-currPos);
+    currPos = pos;
+  }
+  else if(function=="d")
   {
     disarmStepper();
   }
